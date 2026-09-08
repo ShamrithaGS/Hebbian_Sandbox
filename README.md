@@ -18,12 +18,12 @@
 
 ## Overview
 
-Most sequence models treat memory as an explicit, engineered component — a KV-cache, a recurrent buffer, a dedicated memory matrix. **Hebbian Sandbox** is a small, fully verified interactive teaching model that shows memory can emerge for free from a much older and simpler idea: when two neurons fire together, the connection between them temporarily strengthens. That strengthening *is* the memory — no cache, no gate, no separate module. It fades through decay and can be overwritten by interference from competing patterns.
+Most sequence models treat memory as an explicit, engineered component — a KV-cache, a recurrent buffer, a dedicated memory matrix. **Hebbian Sandbox** is a small, fully verified interactive tea[...]
 
-The sandbox connects this mechanism directly to Pathway's **Dragon Hatchling (BDH)** architecture, which relies on the same principle — synaptic plasticity as working memory — verified against the primary paper (arXiv:2509.26507), not secondhand summaries.
+The sandbox connects this mechanism directly to Pathway's **Dragon Hatchling (BDH)** architecture, which relies on the same principle — synaptic plasticity as working memory — verified against[...]
 
 > **The one-sentence claim (falsifiable, locked before coding):**
-> *A network with no dedicated memory component can still "remember" a recent pattern for several steps, purely because Hebbian updates temporarily strengthen the synapses that just fired together — and that memory decays and can be overwritten by interference, not by an explicit forget gate.*
+> *A network with no dedicated memory component can still "remember" a recent pattern for several steps, purely because Hebbian updates temporarily strengthen the synapses that just fired together[...]
 
 ---
 
@@ -40,24 +40,25 @@ The sandbox connects this mechanism directly to Pathway's **Dragon Hatchling (BD
 - ⚡ **Real, live computation on every interaction** — nothing precomputed, nothing animated; every trial genuinely encodes, decays, interferes with, and reconstructs a pattern
 - 🧬 **Sparse, non-negative activations** (k=10 of n=200 units, ~5% sparsity) matching BDH's own reported activation regime — not an arbitrary choice
 - 📊 **Correct evaluation metric** — overlap on true active units, not naive bit-matching (which would misleadingly score a blank output ~95% on patterns this sparse)
-- 🔗 **Substantive BDH module** — three claims sourced to exact sections of the Dragon Hatchling paper, an explicit toy-vs-BDH comparison table, and an honest "what's missing" list (scale-free graphs, spiking dynamics, sequence processing, and more)
+- 🔗 **Substantive BDH module** — three claims sourced to exact sections of the Dragon Hatchling paper, an explicit toy-vs-BDH comparison table, and an honest "what's missing" list (scale-free[...]
 
 **Engineering Discipline**
 - ✅ **9-test regression suite** protecting the frozen, verified headline numbers (`pytest tests/`)
-- 🧮 **Gradient-descent calibration** (`calibrate.py`) — decay/noise parameters optionally re-derived via finite-difference gradient descent against a target memory curve, since the model's discrete top-k step isn't analytically differentiable
+- 🧮 **Gradient-descent calibration** (`calibrate.py`) — decay/noise parameters optionally re-derived via finite-difference gradient descent against a target memory curve, since the model's di[...]
 - 📜 Full development history disclosed, including **three real bugs found and fixed** during verification (see [Known Limitations](#-known-limitations--development-history))
 
 ---
 
 ## 🌐 Live Demo & Repository
 
-| | |
-|---|---|
+| | | |
+|---|---|---|
 | **Live artifact** | [hebbian-sandbox.onrender.com](https://hebbian-sandbox.onrender.com) *(opens without sign-in)* |
+| **Working video** | [Watch on Google Drive](https://drive.google.com/file/d/1VGP8F0gcG9xB-cZyujbIvH1IKArY3lra/view?usp=sharing) |
 | **Source repository** | [github.com/ShamrithaGS/Hebbian_Sandbox](https://github.com/ShamrithaGS/Hebbian_Sandbox) |
 | **One-page concept summary** | [`concept_summary.pdf`](concept_summary.pdf) |
 
-> ⚠️ Free-tier hosting on Render sleeps after ~15 minutes of inactivity — the first request after idle may take 30–60s to wake the server. This is disclosed here for transparency, not hidden.
+> ⚠️ Free-tier hosting on Render sleeps after ~15 minutes of inactivity — the first request after idle may take 30–60s to wake the server. This is disclosed here for transparency, not hidd[...]
 
 ---
 
@@ -104,7 +105,7 @@ flowchart TD
 | Calibration | `calibrate.py` | Optional: finite-difference gradient descent to re-derive decay/noise parameters against a target forgetting curve. |
 | Tests | `tests/test_regression.py` | 9 tests protecting determinism, headline numbers, and API contracts against regressions. |
 
-**What's live vs. precomputed:** everything is live. Every trial randomly generates a fresh pattern, genuinely encodes it via the Hebbian rule, genuinely decays/interferes with the weight matrix, and genuinely reconstructs it from a partial cue. Nothing is looked up or faked.
+**What's live vs. precomputed:** everything is live. Every trial randomly generates a fresh pattern, genuinely encodes it via the Hebbian rule, genuinely decays/interferes with the weight matrix,[...]
 
 ---
 
@@ -181,7 +182,7 @@ python calibrate.py
 
 ## 🎓 Who This Is For
 
-**Audience:** data scientists and ML engineers familiar with basic neural network concepts (neurons, weights, activations) but new to brain-inspired short-term memory mechanisms. No prior knowledge of Hebbian learning or BDH required.
+**Audience:** data scientists and ML engineers familiar with basic neural network concepts (neurons, weights, activations) but new to brain-inspired short-term memory mechanisms. No prior knowled[...]
 
 **Learning objectives** — after using this sandbox, a learner should be able to:
 1. Explain how Hebbian updates can act as short-term memory without a dedicated memory module.
@@ -199,7 +200,7 @@ Primary source: Kosowski, Uznański, Chorowski, Stamirowska, Bartoszkiewicz. *"T
 
 | Claim | Section | What it says |
 |---|---|---|
-| Working memory = Hebbian synapses | Abstract, §1.2 | BDH's working memory during inference relies entirely on synaptic plasticity with Hebbian learning, at a potentiation timescale comparable to minutes of brain activity (~hundreds of tokens) |
+| Working memory = Hebbian synapses | Abstract, §1.2 | BDH's working memory during inference relies entirely on synaptic plasticity with Hebbian learning, at a potentiation timescale comparable [...]
 | Sparse, non-negative activation | §6.2 | BDH-GPU's positive activation vectors are reported at ~5% sparsity — this sandbox uses exactly that level (k=10 of n=200) |
 | Monosemantic synapses | §6.3 | A synapse's in-context state localizes consistently on the same connection across prompts, letting individual synapses be read as concept-specific features |
 
@@ -213,7 +214,7 @@ Primary source: Kosowski, Uznański, Chorowski, Stamirowska, Bartoszkiewicz. *"T
 | Recall mechanism | One-shot dot-product threshold | Formally derived from Transformer attention equations |
 | Scale | Fixed, algorithmic, ~40K synapses | Trained GPU-optimized LLM (10M–1B+ parameters) |
 
-**On BDH-CQ:** not directly used here — its focus is test-time task adaptation from demonstrations, whereas this project isolates within-session synaptic memory, interference, and decay. Its relevance to *this specific* concept is not established by this project, and we say so rather than inventing a connection.
+**On BDH-CQ:** not directly used here — its focus is test-time task adaptation from demonstrations, whereas this project isolates within-session synaptic memory, interference, and decay. Its re[...]
 
 This sandbox's toy network is an **independent, simplified reimplementation for teaching purposes — not the official BDH model** — labeled as such throughout the app and this README.
 
@@ -221,10 +222,10 @@ This sandbox's toy network is an **independent, simplified reimplementation for 
 
 ## 📚 Primary Research Papers (2022–2026)
 
-1. **Duan, Y., Jia, Z., Li, Q., Zhong, Y., Ma, K.** (2023). *"Hebbian and Gradient-based Plasticity Enables Robust Memory and Rapid Learning in RNNs."* ICLR 2023. [arXiv:2302.03235](https://arxiv.org/abs/2302.03235)
+1. **Duan, Y., Jia, Z., Li, Q., Zhong, Y., Ma, K.** (2023). *"Hebbian and Gradient-based Plasticity Enables Robust Memory and Rapid Learning in RNNs."* ICLR 2023. [arXiv:2302.03235](https://arxiv[...]
 2. **Behrouz, A., Zhong, P., Mirrokni, V.** (2024/2025). *"Titans: Learning to Memorize at Test Time."* Google Research. [arXiv:2501.00663](https://arxiv.org/abs/2501.00663)
 3. **Szelogowski, D.** (2025). *"Hebbian Memory-Augmented Recurrent Networks: Engram Neurons in Deep Learning."* [arXiv:2507.21474](https://arxiv.org/abs/2507.21474)
-4. **Ellwood, I. T.** (2024). *"Short-term Hebbian learning can implement transformer-like attention."* PLoS Computational Biology, 20(1), e1011843. [doi.org/10.1371/journal.pcbi.1011843](https://doi.org/10.1371/journal.pcbi.1011843)
+4. **Ellwood, I. T.** (2024). *"Short-term Hebbian learning can implement transformer-like attention."* PLoS Computational Biology, 20(1), e1011843. [doi.org/10.1371/journal.pcbi.1011843](https:/[...]
 
 ---
 
@@ -232,14 +233,14 @@ This sandbox's toy network is an **independent, simplified reimplementation for 
 
 This engine went through several rounds of verification, and each round caught a **real bug** that would have quietly invalidated the claim if shipped:
 
-1. **Scalar decay alone is invisible to top-k-based recall** — shrinking every weight by the same factor doesn't change which units score highest, so nothing appeared to forget. Fixed by adding background synaptic noise during decay.
-2. **The accuracy metric was wrong for sparse patterns** — with only 5% of units active, "fraction of matching bits" gave a blank, useless output ~95% accuracy. Fixed by measuring overlap only on the true active units.
-3. **The cue accidentally revealed the answer** — revealing a fraction of the whole (mostly-zero) vector also revealed the same fraction of the active units for free. Fixed by revealing a fraction of the active units specifically.
+1. **Scalar decay alone is invisible to top-k-based recall** — shrinking every weight by the same factor doesn't change which units score highest, so nothing appeared to forget. Fixed by adding[...]
+2. **The accuracy metric was wrong for sparse patterns** — with only 5% of units active, "fraction of matching bits" gave a blank, useless output ~95% accuracy. Fixed by measuring overlap only [...]
+3. **The cue accidentally revealed the answer** — revealing a fraction of the whole (mostly-zero) vector also revealed the same fraction of the active units for free. Fixed by revealing a fract[...]
 
 **Limitations disclosed directly, not hidden:**
 - This is a small, standalone toy model (n=200 units). It is **not** the official BDH implementation.
 - Recall is a one-shot readout, not deep recurrent inference — a deliberate choice so decay/interference effects stay honestly visible instead of being masked by iterative cleanup.
-- This sandbox's "memory" is entirely within-session. Whether short-term synaptic state could ever consolidate into durable, cross-session learning is an open question — including for BDH itself.
+- This sandbox's "memory" is entirely within-session. Whether short-term synaptic state could ever consolidate into durable, cross-session learning is an open question — including for BDH itsel[...]
 
 ---
 
@@ -290,9 +291,9 @@ This project is licensed under the MIT License.
 
 This project was built with iterative assistance from AI agents:
 - **Implementation:** Antigravity / Gemini 3.6 High (Google DeepMind / Google) proposed initial implementations of the Hebbian memory engine, the FastAPI backend, and the frontend.
-- **Independent review / research:** Claude (Anthropic) acted as an independent reviewer and research agent, verifying claims against primary sources and testing behavior end-to-end rather than accepting it on trust.
+- **Independent review / research:** Claude (Anthropic) acted as an independent reviewer and research agent, verifying claims against primary sources and testing behavior end-to-end rather than a[...]
 
-This process caught and fixed three real bugs (see [Known Limitations](#-known-limitations--development-history) above) and one fabricated citation during drafting, which was removed and replaced with primary sources checked directly against arXiv. **The team is responsible for, and can explain and defend, every claim, citation, and line of code in this submission.**
+This process caught and fixed three real bugs (see [Known Limitations](#-known-limitations--development-history) above) and one fabricated citation during drafting, which was removed and replaced[...]
 
 ---
 
