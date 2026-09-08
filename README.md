@@ -266,9 +266,12 @@ To deploy your own instance: connect this repository to Render (or Railway/Herok
 ## 👥 Team
 **Mohamed Jameen Ali M R**(Lead)  — [@jameen-ali](https://github.com/jameen-ali)
 
--**Shamritha GS**  — [@ShamrithaGS](https://github.com/jameen-ali)
--**Pavankumar T**  — [@Pavankumar06T](https://github.com/Pavankumar06T)
--**Nishu kumari V**  — [@Nishukumari09](https://github.com/Nishukumari09)
+**Shamritha GS**  — [@ShamrithaGS](https://github.com/jameen-ali)
+
+**Pavankumar T**  — [@Pavankumar06T](https://github.com/Pavankumar06T)
+
+**Nishu kumari V**  — [@Nishukumari09](https://github.com/Nishukumari09)
+
 ---
 
 ## 📄 Credits and Licenses
