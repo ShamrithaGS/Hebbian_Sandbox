@@ -1,0 +1,1280 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hebbian Sandbox - Visual Learning</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,500;1,500&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root {
+    --bg: #0C0F14;
+    --panel: #161B24;
+    --line: #2A313D;
+    --text: #E9E6DD;
+    --text-dim: #8B93A1;
+    --amber: #E3B23C;
+    --amber-dim: rgba(227, 178, 60, 0.2);
+    --teal: #4FA694;
+    --brick: #C1553F;
+}
+body { margin: 0; background: var(--bg); color: var(--text); font-family: 'IBM Plex Mono', monospace; font-size: 14px; line-height: 1.6; }
+.container { display: flex; flex-direction: column; min-height: 100vh; }
+@media (min-width: 900px) {
+    .container { flex-direction: row; }
+}
+.scrolly { flex: 1; padding: 40px; max-width: 600px; padding-bottom: 300px; overflow-y: auto; }
+.visual-container { flex: 1; position: sticky; top: 0; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; background: #080A0C; padding: 20px; border-left: 1px solid var(--line); }
+
+.step { opacity: 0.2; transition: opacity 0.5s ease; margin-bottom: 80px; pointer-events: none; }
+.step.active { opacity: 1; pointer-events: auto; }
+.step h2 { font-family: 'Fraunces', serif; font-style: italic; font-size: 24px; color: var(--amber); margin-bottom: 10px; }
+.step p { margin-bottom: 15px; color: var(--text-dim); }
+.step .instruction { font-weight: 500; color: var(--text); border-left: 2px solid var(--amber); padding-left: 10px; margin: 20px 0; }
+
+button { background: transparent; border: 1px solid var(--amber); color: var(--amber); padding: 10px 16px; cursor: pointer; font-family: inherit; font-size: 14px; transition: all 0.2s; width: 100%; max-width: 300px; margin-top: 10px; }
+button:hover:not(:disabled) { background: var(--amber-dim); }
+button:focus-visible { outline: 2px solid var(--amber); outline-offset: 2px; }
+button:disabled { border-color: var(--line); color: var(--line); cursor: not-allowed; }
+.unit-cell-btn { display: inline-block; width: auto; max-width: none; padding: 5px 9px; font-size: 11px; margin: 2px; background: #161B24; border: 1px solid var(--line); color: var(--text); border-radius: 3px; }
+.unit-cell-btn:hover:not(:disabled) { border-color: var(--amber); background: var(--amber-dim); color: var(--amber); }
+.unit-cell-btn:focus-visible { outline: 2px solid var(--amber); outline-offset: 1px; }
+.unit-cell-btn.selected { border-color: var(--amber); background: var(--amber); color: var(--bg); font-weight: 600; }
+
+.control-group { margin-bottom: 15px; }
+.control-group label { display: flex; justify-content: space-between; margin-bottom: 5px; color: var(--text); }
+input[type=range] { width: 100%; accent-color: var(--amber); }
+
+.grid-label { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; text-align: center; }
+.canvas-wrapper { display: flex; flex-direction: column; align-items: center; margin: 10px; }
+canvas { image-rendering: pixelated; border: 1px solid var(--line); background: #161B24; transition: opacity 0.3s; }
+
+.row { display: flex; gap: 20px; flex-wrap: wrap; justify-content: center; align-items: center; }
+.matrix-wrapper { margin-top: 40px; display: flex; flex-direction: column; align-items: center; }
+
+#diffLegend { display: flex; gap: 15px; font-size: 11px; margin-top: 15px; justify-content: center; color: var(--text-dim); }
+.legend-item { display: flex; align-items: center; gap: 5px; }
+.legend-box { width: 12px; height: 12px; }
+.legend-match { background: var(--amber); }
+.legend-miss { border: 1px dashed var(--amber); box-sizing: border-box; }
+.legend-false { background: var(--brick); }
+
+.hidden { display: none !important; }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); border: 0; }
+.accuracy-display { font-size: 32px; color: var(--amber); margin-top: 20px; text-align: center; font-weight: 500; }
+.accuracy-display span { font-size: 12px; color: var(--text-dim); display: block; font-weight: normal; }
+
+.prediction-box { background: rgba(255,255,255,0.05); border: 1px solid var(--line); padding: 15px; margin-bottom: 15px; }
+.prediction-box p { color: var(--text); margin-top: 0; }
+.pred-btn { margin-top: 5px; max-width: none; width: auto; margin-right: 10px; }
+.pred-btn.selected { background: var(--amber); color: var(--bg); border-color: var(--amber); }
+.pred-btn:disabled:not(.selected) { opacity: 0.5; border-color: var(--line); color: var(--text-dim); }
+.pred-btn:disabled.selected { cursor: default; }
+
+/* BDH Module Styles */
+.bdh-text { color: var(--teal); }
+.bdh-card { background: rgba(79, 166, 148, 0.05); border: 1px solid var(--teal); padding: 15px; margin-bottom: 15px; }
+.bdh-card-brick { background: rgba(193, 85, 63, 0.05); border: 1px solid var(--brick); padding: 15px; margin-bottom: 15px; border-left: 4px solid var(--brick); }
+
+.diagram-container { display: flex; flex-direction: column; gap: 20px; margin: 20px 0; }
+@media (min-width: 600px) { .diagram-container { flex-direction: row; } }
+.diagram-box { flex: 1; border: 1px solid var(--line); padding: 15px; background: rgba(255,255,255,0.02); text-align: center; font-size: 12px; }
+.diagram-box h4 { margin-top: 0; color: var(--text); }
+.diagram-box p { color: var(--text-dim); }
+.diagram-caption { font-size: 11px; text-align: center; color: var(--text-dim); font-style: italic; margin-top: -10px; margin-bottom: 20px; }
+
+.sources-box summary { cursor: pointer; color: var(--text-dim); outline: none; }
+.sources-box summary:hover, .sources-box summary:focus-visible { color: var(--text); }
+.sources-box { border: 1px solid var(--line); padding: 10px; margin-top: 30px; font-size: 12px; color: var(--text-dim); }
+
+dl.limitations { font-size: 13px; }
+dl.limitations dt { color: var(--amber); font-weight: 500; margin-top: 15px; }
+dl.limitations dd { margin-left: 0; color: var(--teal); border-left: 2px solid var(--line); padding-left: 10px; margin-top: 5px; }
+
+/* Header for sandbox info */
+.sandbox-title { text-align: center; font-family: 'Fraunces', serif; font-size: 20px; font-style: italic; margin-bottom: 30px; color: var(--text-dim); }
+
+@media (max-width: 600px) {
+    .scrolly { padding: 20px; }
+    canvas, svg { max-width: 100%; height: auto; }
+}
+@media (max-width: 900px) {
+    .visual-container { position: relative; height: auto; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .step { transition: none; }
+    * { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+}
+.table-wrapper { width: 100%; overflow-x: auto; }
+.breadcrumb { font-size: 11px; color: var(--teal); font-weight: 500; letter-spacing: 0.05em; margin-bottom: 40px; text-transform: uppercase; }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <div class="scrolly" id="scrolly">
+        
+        <h1 style="font-family: 'Fraunces', serif; font-style: italic; color: var(--text); font-size: 32px;">Synaptic Memory</h1>
+        <p style="color: var(--text-dim); margin-bottom: 40px;">Can a neural network remember a pattern without an explicit memory module or KV cache?</p>
+
+        <div class="breadcrumb" aria-hidden="true">Explore &rarr; Experiment &rarr; Diagnose &rarr; Connect &rarr; Sandbox</div>
+
+        <!-- Stage 1: Intro -->
+        <div class="step active" id="step1">
+            <h2>1. The Blank Slate</h2>
+            <p><strong>WHAT YOU SEE</strong><br>A sparse grid representing 200 neurons. The bright dots are active neurons forming a specific pattern.</p>
+            <p><strong>WHY IT MATTERS</strong><br>This is the information we want the network to temporarily remember.</p>
+            <div class="instruction">Generate a random pattern to begin.</div>
+            <button id="btnGenerate">Generate Pattern</button>
+        </div>
+
+        <!-- Stage 2: Formation -->
+        <div class="step" id="step2">
+            <h2>2. Memory Formation</h2>
+            <p><strong>WHAT YOU SEE</strong><br>The 200x200 matrix representing all 40,000 synaptic connections. It lights up as connections change.</p>
+            <p><strong>WHY IT HAPPENS</strong><br>The Hebbian update rule strengthens connections between neurons that fire at the same time. The memory is now physically stored in the synapse weights.</p>
+            <div class="instruction">Teach the network this pattern. Watch the synapses.</div>
+            <button id="btnEncode">Encode Memory</button>
+        </div>
+
+        <!-- Stage 3: Recall -->
+        <div class="step" id="step3">
+            <h2>3. Recall Signal Flow</h2>
+            <p><strong>WHAT YOU SEE</strong><br>We hide the original pattern and provide a partial clue. The cue sends signals through the newly strengthened synapses, calculating activation scores (shown as a glowing heat map) to reconstruct the full memory.</p>
+            <p><strong>WHY IT HAPPENS</strong><br>Because the original neurons were wired together, stimulating just a few of them triggers a cascade that activates the rest.</p>
+            <div class="control-group">
+                <label>Cue Completeness: <span id="valCue" style="color: var(--amber)">40%</span></label>
+                <input type="range" id="slideCue" min="10" max="90" step="10" value="40" aria-label="Cue completeness percentage">
+            </div>
+            <div class="instruction">Give it a clue. Can it reconstruct the rest?</div>
+            <button id="btnRecall">Recall Memory</button>
+        </div>
+
+        <!-- Stage 4: Truth vs Recall -->
+        <div class="step" id="step4">
+            <h2>4. Truth vs Recall</h2>
+            <p><strong>WHAT YOU SEE</strong><br>A Diff View. Solid amber means a correct recall. A dashed outline means the network forgot that neuron. Red means the network hallucinated a false memory.</p>
+            <p><strong>WHY IT HAPPENS</strong><br>The network selects the most strongly activated neurons. With a fresh memory and no noise, it reconstructs perfectly.</p>
+            <div class="instruction">Proceed to the first challenge.</div>
+            <button id="btnProceedChallenge1">Start Challenge 1 &rsaquo;</button>
+        </div>
+
+        <!-- Stage 5: Predict Interference -->
+        <div class="step" id="step5">
+            <h2>5. Predict Interference</h2>
+            <p><strong>WHAT YOU SEE</strong><br>The synaptic matrix gets chaotic and messy as false connections strengthen.</p>
+            <p><strong>WHY IT HAPPENS</strong><br>When the network learns new distractor patterns, they share the exact same synapses. This crosstalk overwrites the original memory, causing hallucinations.</p>
+            
+            <div class="prediction-box">
+                <p><strong>CHALLENGE 1</strong><br>If we add 20 distractors, what will happen to recall?</p>
+                <button class="pred-btn" onclick="selectPrediction('dist', 1, this)">Improve</button>
+                <button class="pred-btn" onclick="selectPrediction('dist', 2, this)">Get Worse</button>
+                <button class="pred-btn" onclick="selectPrediction('dist', 3, this)">Stay Same</button>
+            </div>
+            <div id="feedbackDist" class="prediction-box hidden" style="border-color: var(--teal)"></div>
+
+            <div class="control-group">
+                <label>Distracting patterns: <span id="valDist" style="color: var(--amber)">20</span></label>
+                <input type="range" id="slideDist" min="0" max="40" step="1" value="20" aria-label="Number of distracting patterns">
+            </div>
+            <div class="instruction" id="instDist" style="display:none;">Interfere with the memory and test your prediction.</div>
+            <button id="btnRunInterfere" disabled>Interfere & Recall</button>
+            <button id="btnProceedChallenge2" class="hidden">Start Challenge 2 &rsaquo;</button>
+        </div>
+
+        <!-- Stage 6: Spot False Memory -->
+        <div class="step" id="step6">
+            <h2>6. Diagnose</h2>
+            <p><strong>CHALLENGE 2</strong><br>The memory is now degraded. Some neurons are being hallucinated because of the overlapping synaptic structures.</p>
+            <div class="instruction">Click directly on a FALSE MEMORY (red dot) in the Recall Result grid above, or navigate candidate units below using keyboard (Tab / Enter / Space) to diagnose.</div>
+            <div id="keyboardRecallNav" style="margin-top: 15px;">
+                <span id="kbNavLabel" style="font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; display: block; margin-bottom: 6px;">Recalled Active Units (Keyboard Selectable):</span>
+                <div id="recalledUnitsList" role="group" aria-labelledby="kbNavLabel" style="display: flex; flex-wrap: wrap; gap: 4px;"></div>
+            </div>
+            <div id="feedbackSpot" class="prediction-box hidden" aria-live="polite" style="border-color: var(--teal); margin-top: 15px;"></div>
+            <button id="btnProceedChallenge3" class="hidden">Start Challenge 3 &rsaquo;</button>
+        </div>
+
+        <!-- Stage 7: Recover Memory -->
+        <div class="step" id="step7">
+            <h2>7. Recover Memory</h2>
+            <p><strong>CHALLENGE 3</strong><br>Can you recover the target pattern despite the distractors?</p>
+            <div class="instruction">Adjust the Cue Completeness to help the network reconstruct the pattern. Achieve >= 80% accuracy.</div>
+            
+            <div class="control-group">
+                <label>Cue Completeness: <span id="valCueRec" style="color: var(--amber)">40%</span></label>
+                <input type="range" id="slideCueRec" min="10" max="90" step="10" value="40" aria-label="Cue completeness percentage for recovery">
+            </div>
+            
+            <div id="feedbackRec" class="prediction-box hidden" style="border-color: var(--teal)"></div>
+            <button id="btnRunRecover">Try Recovery</button>
+            <button id="btnProceedChallenge4" class="hidden">Start Challenge 4 &rsaquo;</button>
+        </div>
+
+        <!-- Stage 8: Predict Delay -->
+        <div class="step" id="step8">
+            <h2>8. Predict Delay</h2>
+            <p><strong>WHAT YOU SEE</strong><br>The synaptic connections gradually dim toward gray.</p>
+            
+            <div class="prediction-box">
+                <p><strong>CHALLENGE 4</strong><br>If we remove the distractors but let the memory sit idle for 15 steps, what will happen?</p>
+                <button class="pred-btn" onclick="selectPrediction('delay', 1, this)">State remains unchanged</button>
+                <button class="pred-btn" onclick="selectPrediction('delay', 2, this)">State weakens</button>
+                <button class="pred-btn" onclick="selectPrediction('delay', 3, this)">State strengthens</button>
+            </div>
+            <div id="feedbackDelay" class="prediction-box hidden" style="border-color: var(--teal)"></div>
+
+            <div class="control-group">
+                <label>Delay steps: <span id="valDelay" style="color: var(--amber)">15</span></label>
+                <input type="range" id="slideDelay" min="0" max="30" step="1" value="15" aria-label="Number of delay steps">
+            </div>
+            <div class="instruction" id="instDelay" style="display:none;">Run the experiment to test your prediction.</div>
+            <button id="btnRunDelay" disabled>Wait & Recall</button>
+            <button id="btnProceedBridge" class="hidden">The Big Picture</button>
+        </div>
+
+        <!-- Stage 9: BDH Bridge -->
+        <div class="step" id="step9">
+            <h2>9. The Big Picture</h2>
+            <p><strong>WHAT YOU JUST SAW</strong><br>The network stored information in changing synaptic weights rather than an explicit memory slot.</p>
+            <p><strong>WHY THIS MATTERS</strong><br>Biologically inspired architectures can use changing synaptic state as part of their memory mechanism.</p>
+            <div class="instruction">This toy model isolates one idea used in the broader Dragon Hatchling research: synaptic plasticity can provide a form of rapidly changing internal state.</div>
+            <button id="btnProceedSandbox">Next: Explore the Sandbox</button>
+        </div>
+
+        <!-- Stage 10: Sandbox -->
+        <div class="step" id="step10">
+            <h2>10. Open Sandbox</h2>
+            <p><strong>MASTERY</strong><br>You've completed all challenges.</p>
+            <div class="instruction">All controls are unlocked. Experiment freely.</div>
+            
+            <div class="control-group">
+                <label>Cue Completeness: <span id="valCueSand" style="color: var(--amber)">40%</span></label>
+                <input type="range" id="slideCueSand" min="10" max="90" step="10" value="40" aria-label="Cue completeness percentage">
+            </div>
+            <div class="control-group">
+                <label>Delay steps: <span id="valDelaySand" style="color: var(--amber)">0</span></label>
+                <input type="range" id="slideDelaySand" min="0" max="30" step="1" value="0" aria-label="Number of delay steps">
+            </div>
+            <div class="control-group">
+                <label>Distracting patterns: <span id="valDistSand" style="color: var(--amber)">0</span></label>
+                <input type="range" id="slideDistSand" min="0" max="40" step="1" value="0" aria-label="Number of distracting patterns">
+            </div>
+            
+            <button id="btnSandboxRun">Run Custom Trial</button>
+            <div style="margin-top: 40px; border-top: 1px solid var(--line); padding-top: 20px;">
+                <p><strong>PHASE 5</strong><br>Ready to connect this to real-world AI research?</p>
+                <button id="btnProceedBDH" style="border-color: var(--teal); color: var(--teal);">Next: Zoom out to BDH</button>
+            </div>
+        </div>
+
+        <!-- Stage 11: The Bigger Picture -->
+        <div class="step" id="step11">
+            <h2 style="color: var(--teal)">11. The Bigger Picture</h2>
+            <p><strong>YOU JUST EXPLORED:</strong><br>Pattern &rarr; Cue &rarr; Synaptic weights &rarr; Recall</p>
+            <p>That was a deliberately small teaching model. Now let's zoom out.</p>
+            <p><strong><abbr title="arXiv:2509.26507">Dragon Hatchling (BDH)</abbr></strong> explores a broader architecture built around brain-inspired computation and synaptic plasticity. Our toy model isolates one conceptual mechanism — synaptic-weight-based memory — that is also present in BDH, at a far smaller scale and in a simplified form.</p>
+            <div class="bdh-card" style="text-align: center;">
+                <span style="color: var(--amber)">Small toy network &rarr; changing synaptic state</span><br>
+                <span style="font-size: 10px; color: var(--text-dim)">CONCEPTUAL CONNECTION</span><br>
+                <span style="color: var(--teal)">Larger BDH architecture &rarr; synaptic state + sparse/local computation</span>
+            </div>
+            <button id="btnProceedStep12">Next</button>
+        </div>
+
+        <!-- Stage 12: Where Does BDH Store Memory? -->
+        <div class="step" id="step12">
+            <h2 style="color: var(--teal)">12. Where Does BDH Store Memory?</h2>
+            <div class="prediction-box" style="border-color: var(--teal)">
+                <p><strong>QUESTION</strong><br>During inference, where does the Dragon Hatchling store what it has processed so far?</p>
+                <button class="pred-btn" onclick="checkBDHMemory(1, this)" aria-pressed="false">A. In an external key-value database</button>
+                <button class="pred-btn" onclick="checkBDHMemory(2, this)" aria-pressed="false">B. In the changing strengths of synaptic connections</button>
+                <button class="pred-btn" onclick="checkBDHMemory(3, this)" aria-pressed="false">C. In the static weights set during training</button>
+            </div>
+            <div id="feedbackBDHMemory" class="bdh-card hidden" aria-live="polite"></div>
+            <button id="btnProceedStep13" class="hidden">Next</button>
+        </div>
+
+        <!-- Stage 13: What Corresponds to W? -->
+        <div class="step" id="step13">
+            <h2 style="color: var(--teal)">13. Synapses as State</h2>
+            <div class="table-wrapper">
+                <div class="diagram-container">
+                    <div class="diagram-box" style="border-color: var(--amber);">
+                        <h4 style="color: var(--amber);">TOY MODEL</h4>
+                        <p><strong>W</strong> (200&times;200 dense matrix)</p>
+                        <p>Updated once per episode</p>
+                        <p>Stores a single pattern</p>
+                        <p>Dense connections</p>
+                    </div>
+                    <div class="diagram-box" style="border-color: var(--teal);">
+                        <h4 style="color: var(--teal);">BDH</h4>
+                        <p><strong>Synaptic state</strong> on a graph</p>
+                        <p>Updated every inference step</p>
+                        <p>Builds evolving representation</p>
+                        <p>Sparse, local connections <abbr title="arXiv:2509.26507">[BDH Paper]</abbr></p>
+                    </div>
+                </div>
+            </div>
+            <div class="prediction-box" style="border-color: var(--teal)">
+                <p><strong>QUESTION</strong><br>In our toy model, the matrix W stored the memory. In BDH, what plays the same conceptual role?</p>
+                <button class="pred-btn" onclick="checkBDHW(1, this)" aria-pressed="false">A. The static parameter matrices frozen after training</button>
+                <button class="pred-btn" onclick="checkBDHW(2, this)" aria-pressed="false">B. The evolving edge weights on the neuron graph</button>
+                <button class="pred-btn" onclick="checkBDHW(3, this)" aria-pressed="false">C. The input token embeddings</button>
+            </div>
+            <div id="feedbackBDHW" class="bdh-card hidden" aria-live="polite"></div>
+            <button id="btnProceedStep14" class="hidden">Next</button>
+        </div>
+
+        <!-- Stage 14: Local + Sparse -->
+        <div class="step" id="step14">
+            <h2 style="color: var(--teal)">14. Dense Global vs Local Sparse</h2>
+            <p>In the Transformer, every token attends to every other token — a global, dense operation. BDH instead uses <strong>locally interacting neuron particles</strong> <abbr title="arXiv:2509.26507">[BDH Paper]</abbr>: each neuron only exchanges signals with its neighbors in the graph.</p>
+            
+            <div class="diagram-container">
+                <div class="diagram-box">
+                    <h4>Dense / Global (Transformer)</h4>
+                    <svg viewBox="0 0 100 100" style="width:100%; max-width: 150px; stroke: var(--text-dim); stroke-width: 1;" role="img" aria-label="Conceptual diagram: Dense Global network with all nodes connected">
+                        <line x1="20" y1="20" x2="80" y2="20" /> <line x1="20" y1="20" x2="20" y2="80" /> <line x1="20" y1="20" x2="80" y2="80" />
+                        <line x1="80" y1="20" x2="20" y2="80" /> <line x1="80" y1="20" x2="80" y2="80" /> <line x1="20" y1="80" x2="80" y2="80" />
+                        <circle cx="20" cy="20" r="5" fill="#C1553F" /> <circle cx="80" cy="20" r="5" fill="#C1553F" />
+                        <circle cx="20" cy="80" r="5" fill="#C1553F" /> <circle cx="80" cy="80" r="5" fill="#C1553F" />
+                    </svg>
+                    <p>Every node connects to every other node.</p>
+                </div>
+                <div class="diagram-box">
+                    <h4>Local / Sparse (BDH)</h4>
+                    <svg viewBox="0 0 100 100" style="width:100%; max-width: 150px; stroke: var(--teal); stroke-width: 2;" role="img" aria-label="Conceptual diagram: Local Sparse network with central hub connected only to nearby nodes">
+                        <line x1="50" y1="50" x2="20" y2="20" /> <line x1="50" y1="50" x2="80" y2="20" /> <line x1="50" y1="50" x2="50" y2="80" />
+                        <circle cx="20" cy="20" r="5" fill="#4FA694" /> <circle cx="80" cy="20" r="5" fill="#4FA694" />
+                        <circle cx="50" cy="80" r="5" fill="#4FA694" /> <circle cx="50" cy="50" r="7" fill="#E3B23C" />
+                    </svg>
+                    <p>Nodes interact only with local neighbors.</p>
+                </div>
+            </div>
+            <div class="diagram-caption">Conceptual simplification — not a literal depiction of a production BDH graph.</div>
+            <button id="btnProceedStep15">Next</button>
+        </div>
+
+        <!-- Stage 15: Toy or BDH? -->
+        <div class="step" id="step15">
+            <h2 style="color: var(--teal)">15. What's Shared, What's Different</h2>
+            <p>Classify the conceptual connection for each term below.</p>
+            <div id="classificationGame">
+                <!-- Card 1 -->
+                <div class="prediction-box" id="card1" style="border-color: var(--teal)">
+                    <p style="text-align: center; font-size: 16px; color: var(--teal);"><strong>Sparse neuron activations</strong></p>
+                    <button class="pred-btn" onclick="checkClassification(1, 'analogy', this)" aria-pressed="false">Direct conceptual analogy</button>
+                    <button class="pred-btn" onclick="checkClassification(1, 'related', this)" aria-pressed="false">Related but different</button>
+                    <button class="pred-btn" onclick="checkClassification(1, 'not', this)" aria-pressed="false">Not represented in toy</button>
+                </div>
+                <!-- Card 2 -->
+                <div class="prediction-box hidden" id="card2" style="border-color: var(--teal)">
+                    <p style="text-align: center; font-size: 16px; color: var(--teal);"><strong>Scale-free graph structure</strong></p>
+                    <button class="pred-btn" onclick="checkClassification(2, 'analogy', this)" aria-pressed="false">Direct conceptual analogy</button>
+                    <button class="pred-btn" onclick="checkClassification(2, 'related', this)" aria-pressed="false">Related but different</button>
+                    <button class="pred-btn" onclick="checkClassification(2, 'not', this)" aria-pressed="false">Not represented in toy</button>
+                </div>
+                <!-- Card 3 -->
+                <div class="prediction-box hidden" id="card3" style="border-color: var(--teal)">
+                    <p style="text-align: center; font-size: 16px; color: var(--teal);"><strong>Hebbian-like synaptic update</strong></p>
+                    <button class="pred-btn" onclick="checkClassification(3, 'analogy', this)" aria-pressed="false">Direct conceptual analogy</button>
+                    <button class="pred-btn" onclick="checkClassification(3, 'related', this)" aria-pressed="false">Related but different</button>
+                    <button class="pred-btn" onclick="checkClassification(3, 'not', this)" aria-pressed="false">Not represented in toy</button>
+                </div>
+                <!-- Card 4 -->
+                <div class="prediction-box hidden" id="card4" style="border-color: var(--teal)">
+                    <p style="text-align: center; font-size: 16px; color: var(--teal);"><strong>Language input / multi-token processing</strong></p>
+                    <button class="pred-btn" onclick="checkClassification(4, 'analogy', this)" aria-pressed="false">Direct conceptual analogy</button>
+                    <button class="pred-btn" onclick="checkClassification(4, 'related', this)" aria-pressed="false">Related but different</button>
+                    <button class="pred-btn" onclick="checkClassification(4, 'not', this)" aria-pressed="false">Not represented in toy</button>
+                </div>
+            </div>
+            <div id="feedbackClassification" class="bdh-card hidden" aria-live="polite"></div>
+            <button id="btnProceedStep16" class="hidden">Next</button>
+        </div>
+
+        <!-- Stage 16: What the Toy Leaves Out -->
+        <div class="step" id="step16">
+            <h2 style="color: var(--brick)">16. The Honest Limits</h2>
+            <p>Our toy model isolates one conceptual mechanism — synaptic-weight-based memory. But our toy is NOT BDH. Here is what is missing:</p>
+            <div class="bdh-card-brick">
+                <dl class="limitations">
+                    <dt>Scale-free graph structure</dt>
+                    <dd><strong>TOY:</strong> Uses a dense 200&times;200 matrix.<br><strong>BDH:</strong> Uses a sparse graph with heavy-tailed degree distribution (hubs). <abbr title="arXiv:2509.26507">[BDH Paper]</abbr></dd>
+                    
+                    <dt>Spiking neuron dynamics</dt>
+                    <dd><strong>TOY:</strong> Uses simple binary activations.<br><strong>BDH:</strong> Models spiking neurons. <abbr title="arXiv:2509.26507">[BDH Paper]</abbr></dd>
+                    
+                    <dt>Sequence processing</dt>
+                    <dd><strong>TOY:</strong> Encodes one static pattern array.<br><strong>BDH:</strong> Processes sequential token inputs continuously over time. <abbr title="arXiv:2509.26507">[BDH Paper]</abbr></dd>
+                    
+                    <dt>Attention derivation</dt>
+                    <dd><strong>TOY:</strong> Recall is a simple dot-product threshold.<br><strong>BDH:</strong> Formally derives its mechanism from linear algebra and Transformer attention equations. <span style="font-size: 11px; color: var(--text-dim);">(Kosowski et al. 2025, &sect;2.3)</span></dd>
+                    
+                    <dt>Trained architecture</dt>
+                    <dd><strong>TOY:</strong> A fixed, algorithmic pedagogical model.<br><strong>BDH:</strong> A trained, GPU-optimized Large Language Model (10M - 1B parameters). <abbr title="arXiv:2509.26507">[BDH Paper]</abbr></dd>
+                    
+                    <dt>BDH-CQ Architecture</dt>
+                    <dd>BDH-CQ is not directly used here because its focus is test-time task adaptation from demonstrations, whereas this experience isolates within-session synaptic memory, interference, and decay.</dd>
+                </dl>
+            </div>
+            <button id="btnProceedStep17">Next</button>
+        </div>
+
+        <!-- Stage 17: Research Takeaway -->
+        <div class="step" id="step17">
+            <h2 style="color: var(--teal)">17. Why This Matters</h2>
+            <p>The Dragon Hatchling is consistent with the intuition behind real architectural choices in a modern language model &mdash; sharing the concepts you explored like synaptic memory delays, interference, and recall.</p>
+            <p>BDH shows that individual synapses can be <strong>monosemantic</strong> (linked to specific concepts), giving researchers a window into the model's internal reasoning. This interpretability is an inherent feature of the architecture, not an add-on. <abbr title="arXiv:2509.26507">[BDH Paper]</abbr></p>
+            
+            <details class="sources-box">
+                <summary><strong>Explore the Sources</strong></summary>
+                <ol style="margin-top: 10px; padding-left: 20px;">
+                    <li><a href="https://arxiv.org/abs/2509.26507" target="_blank" rel="noopener noreferrer" style="color: var(--teal);">The Dragon Hatchling: The Missing Link between the Transformer and Models of the Brain</a><br>arXiv:2509.26507 (Kosowski, Uznański, Chorowski, Stamirowska, Bartoszkiewicz, 2025)</li>
+                    <li><a href="https://doi.org/10.1371/journal.pcbi.1011843" target="_blank" rel="noopener noreferrer" style="color: var(--teal);">Short-term Hebbian learning can implement transformer-like attention</a><br>PLoS Computational Biology 20(1): e1011843 (Ellwood, 2024)</li>
+                </ol>
+                <p style="margin-top: 10px; font-style: italic;">Note: Pathway explanatory pages referenced during development were unavailable at audit time; technical claims here are grounded in the primary BDH paper.</p>
+            </details>
+            <div style="margin-top: 40px; border-top: 1px solid var(--teal); padding-top: 20px;">
+                <p><strong>YOU'VE CONNECTED THE PIECES</strong><br>You explored how changing synaptic state can support short-term memory in our toy model, and how BDH builds a much broader architecture around synaptic plasticity.</p>
+                <button id="btnReturnToSandbox" style="border-color: var(--amber); color: var(--amber);">Return to Sandbox</button>
+            </div>
+        </div>
+        
+    </div>
+
+    <div class="visual-container" id="visualContainer">
+        <div class="sandbox-title" id="sandboxTitle">Visual Learning Engine</div>
+        <div id="errorBanner" class="bdh-card-brick hidden" style="width:100%; max-width:400px; text-align:center;"></div>
+        <div id="ariaLive" aria-live="polite" class="sr-only"></div>
+        
+        <!-- Grids -->
+        <div class="row" id="topRow">
+            <div class="canvas-wrapper" id="wrapTruth">
+                <div class="grid-label">Ground Truth</div>
+                <canvas id="cvsTruth" width="200" height="100" style="width:200px; height:100px;" role="img" aria-label="Ground Truth Pattern Grid"></canvas>
+            </div>
+            <div class="canvas-wrapper hidden" id="wrapCue">
+                <div class="grid-label">Partial Cue</div>
+                <canvas id="cvsCue" width="200" height="100" style="width:200px; height:100px;" role="img" aria-label="Partial Cue Grid"></canvas>
+            </div>
+            <div class="canvas-wrapper hidden" id="wrapRecall">
+                <div class="grid-label" id="lblRecall">Recall Result</div>
+                <canvas id="cvsRecall" width="200" height="100" style="width:200px; height:100px;" role="img" aria-label="Recall Result Grid"></canvas>
+            </div>
+        </div>
+        
+        <div id="diffLegend" class="hidden">
+            <div class="legend-item"><div class="legend-box legend-match"></div> Correct</div>
+            <div class="legend-item"><div class="legend-box legend-miss"></div> Missed</div>
+            <div class="legend-item"><div class="legend-box legend-false"></div> False Memory</div>
+        </div>
+
+        <div class="accuracy-display hidden" id="accDisplay">
+            <span id="accVal">--</span>
+            <span>Accuracy</span>
+        </div>
+
+        <!-- Matrix -->
+        <div class="matrix-wrapper hidden" id="wrapMatrix">
+            <div class="grid-label">Synaptic Connections</div>
+            <canvas id="cvsMatrix" width="200" height="200" style="width: 250px; height: 250px;" role="img" aria-label="Synaptic Weights Matrix Heatmap"></canvas>
+            <div style="font-size: 11px; color: var(--text-dim); margin-top: 8px; text-transform: uppercase; letter-spacing: 0.05em;" id="matrixSubtext"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+const API = "";
+
+let currentData = null;
+let sessionSeed = null;
+let currentPrediction = null;
+let animationToken = 0;
+let currentAbortController = null;
+
+// DOM Elements
+const els = {
+    steps: [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17].map(i => document.getElementById('step'+i)),
+    btnGenerate: document.getElementById('btnGenerate'),
+    btnEncode: document.getElementById('btnEncode'),
+    btnRecall: document.getElementById('btnRecall'),
+    btnProceedChallenge1: document.getElementById('btnProceedChallenge1'),
+    btnRunInterfere: document.getElementById('btnRunInterfere'),
+    btnProceedChallenge2: document.getElementById('btnProceedChallenge2'),
+    btnProceedChallenge3: document.getElementById('btnProceedChallenge3'),
+    btnRunRecover: document.getElementById('btnRunRecover'),
+    btnProceedChallenge4: document.getElementById('btnProceedChallenge4'),
+    btnRunDelay: document.getElementById('btnRunDelay'),
+    btnProceedBridge: document.getElementById('btnProceedBridge'),
+    btnProceedSandbox: document.getElementById('btnProceedSandbox'),
+    btnSandboxRun: document.getElementById('btnSandboxRun'),
+    btnProceedBDH: document.getElementById('btnProceedBDH'),
+    btnProceedStep12: document.getElementById('btnProceedStep12'),
+    btnProceedStep13: document.getElementById('btnProceedStep13'),
+    btnProceedStep14: document.getElementById('btnProceedStep14'),
+    btnProceedStep15: document.getElementById('btnProceedStep15'),
+    btnProceedStep16: document.getElementById('btnProceedStep16'),
+    btnProceedStep17: document.getElementById('btnProceedStep17'),
+    btnReturnToSandbox: document.getElementById('btnReturnToSandbox'),
+    
+    slideCue: document.getElementById('slideCue'),
+    slideDist: document.getElementById('slideDist'),
+    slideCueRec: document.getElementById('slideCueRec'),
+    slideDelay: document.getElementById('slideDelay'),
+    
+    slideCueSand: document.getElementById('slideCueSand'),
+    slideDelaySand: document.getElementById('slideDelaySand'),
+    slideDistSand: document.getElementById('slideDistSand'),
+
+    valCue: document.getElementById('valCue'),
+    valDist: document.getElementById('valDist'),
+    valCueRec: document.getElementById('valCueRec'),
+    valDelay: document.getElementById('valDelay'),
+    
+    valCueSand: document.getElementById('valCueSand'),
+    valDelaySand: document.getElementById('valDelaySand'),
+    valDistSand: document.getElementById('valDistSand'),
+
+    cvsTruth: document.getElementById('cvsTruth'),
+    cvsCue: document.getElementById('cvsCue'),
+    cvsRecall: document.getElementById('cvsRecall'),
+    cvsMatrix: document.getElementById('cvsMatrix'),
+    
+    wrapTruth: document.getElementById('wrapTruth'),
+    wrapCue: document.getElementById('wrapCue'),
+    wrapRecall: document.getElementById('wrapRecall'),
+    wrapMatrix: document.getElementById('wrapMatrix'),
+    
+    lblRecall: document.getElementById('lblRecall'),
+    diffLegend: document.getElementById('diffLegend'),
+    accDisplay: document.getElementById('accDisplay'),
+    accVal: document.getElementById('accVal'),
+    matrixSubtext: document.getElementById('matrixSubtext'),
+    ariaLive: document.getElementById('ariaLive'),
+    errorBanner: document.getElementById('errorBanner'),
+    
+    instDelay: document.getElementById('instDelay'),
+    instDist: document.getElementById('instDist'),
+    feedbackDelay: document.getElementById('feedbackDelay'),
+    feedbackDist: document.getElementById('feedbackDist'),
+    feedbackSpot: document.getElementById('feedbackSpot'),
+    feedbackRec: document.getElementById('feedbackRec'),
+    feedbackBDHMemory: document.getElementById('feedbackBDHMemory'),
+    feedbackBDHW: document.getElementById('feedbackBDHW'),
+    feedbackClassification: document.getElementById('feedbackClassification')
+};
+
+// Compute Diff Stats
+function getDiffStats(truth, recall) {
+    let tp = 0, fn = 0, fp = 0;
+    for (let i = 0; i < truth.length; i++) {
+        if (truth[i] > 0.5 && recall[i] > 0.5) tp++;
+        else if (truth[i] > 0.5 && recall[i] <= 0.5) fn++;
+        else if (truth[i] <= 0.5 && recall[i] > 0.5) fp++;
+    }
+    return { tp, fn, fp };
+}
+
+// Render Grids
+function renderGrid(canvas, vector, diffTarget = null) {
+    const ctx = canvas.getContext('2d');
+    const cols = 20, rows = 10, s = 10; 
+    ctx.clearRect(0,0, 200, 100);
+    ctx.fillStyle = '#161B24';
+    ctx.fillRect(0,0, 200, 100);
+
+    for (let i = 0; i < vector.length; i++) {
+        const x = (i % cols) * s;
+        const y = Math.floor(i / cols) * s;
+        
+        if (diffTarget) {
+            const isTruth = diffTarget[i] > 0.5;
+            const isRecall = vector[i] > 0.5;
+            
+            if (isTruth && isRecall) {
+                ctx.fillStyle = '#E3B23C';
+                ctx.fillRect(x, y, s, s);
+            } else if (isTruth && !isRecall) {
+                ctx.strokeStyle = '#E3B23C';
+                ctx.lineWidth = 1;
+                ctx.setLineDash([2, 2]);
+                ctx.strokeRect(x+1, y+1, s-2, s-2);
+                ctx.setLineDash([]);
+            } else if (!isTruth && isRecall) {
+                ctx.fillStyle = '#C1553F';
+                ctx.fillRect(x, y, s, s);
+            } else {
+                ctx.fillStyle = '#20262f';
+                ctx.fillRect(x, y, s, s);
+            }
+        } else {
+            const v = vector[i];
+            if (v === 0) {
+                ctx.fillStyle = '#20262f';
+            } else if (v === 1) {
+                ctx.fillStyle = '#E3B23C';
+            } else {
+                // Continuous heat (activation scores)
+                ctx.fillStyle = `rgba(227, 178, 60, ${v})`;
+            }
+            ctx.fillRect(x, y, s, s);
+        }
+    }
+}
+
+// Draw Known Mask Overlay
+function drawKnownBoost(canvas, knownMask) {
+    const ctx = canvas.getContext('2d');
+    const cols = 20, s = 10;
+    ctx.strokeStyle = '#FFFFFF';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < knownMask.length; i++) {
+        if (knownMask[i] > 0.5) {
+            const x = (i % cols) * s;
+            const y = Math.floor(i / cols) * s;
+            ctx.strokeRect(x+1, y+1, s-2, s-2);
+        }
+    }
+}
+
+// Render Matrix Heatmap
+function renderMatrix(canvas, matrix) {
+    const ctx = canvas.getContext('2d');
+    const size = matrix.length;
+    const imgData = ctx.createImageData(size, size);
+    let maxAbs = 0;
+    for (const row of matrix) for (const v of row) maxAbs = Math.max(maxAbs, Math.abs(v));
+    if (maxAbs === 0) maxAbs = 1;
+
+    for (let i = 0; i < size; i++) {
+        for (let j = 0; j < size; j++) {
+            const v = matrix[i][j] / maxAbs;
+            const idx = (i * size + j) * 4;
+            if (v >= 0) {
+                imgData.data[idx] = Math.round(227 * v);     
+                imgData.data[idx+1] = Math.round(178 * v);   
+                imgData.data[idx+2] = Math.round(60 * v);    
+            } else {
+                imgData.data[idx] = Math.round(79 * -v);     
+                imgData.data[idx+1] = Math.round(166 * -v);  
+                imgData.data[idx+2] = Math.round(148 * -v);  
+            }
+            imgData.data[idx+3] = 255;
+        }
+    }
+    ctx.putImageData(imgData, 0, 0);
+}
+
+// Matrix Animation
+function animateMatrixSequence(canvas, historyArray, onComplete, fastMode = false) {
+    animationToken++;
+    const myToken = animationToken;
+    let frame = 0;
+    const totalFrames = historyArray.length;
+    
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+        if (totalFrames > 0) {
+            renderMatrix(canvas, historyArray[totalFrames - 1].weights);
+            els.matrixSubtext.textContent = "Final synaptic state.";
+        }
+        if (onComplete) onComplete();
+        return;
+    }
+    
+    function drawNext() {
+        if (myToken !== animationToken) return; // Cancelled
+        if (frame < totalFrames) {
+            renderMatrix(canvas, historyArray[frame].weights);
+            
+            if (historyArray[frame].stage === "encode") els.matrixSubtext.textContent = "Encoding pattern...";
+            else if (historyArray[frame].stage === "decay") els.matrixSubtext.textContent = `Decaying synapse strength... (Step ${historyArray[frame].step})`;
+            else if (historyArray[frame].stage === "distractor") els.matrixSubtext.textContent = `Adding distractor interference... (Pattern ${historyArray[frame].step})`;
+            
+            frame++;
+            setTimeout(() => requestAnimationFrame(drawNext), fastMode ? 20 : 60);
+        } else {
+            els.matrixSubtext.textContent = "Final synaptic state.";
+            if (onComplete) onComplete();
+        }
+    }
+    requestAnimationFrame(drawNext);
+}
+
+// Fetch helper
+async function fetchTrial(params) {
+    if (currentAbortController) {
+        currentAbortController.abort();
+    }
+    currentAbortController = new AbortController();
+    
+    if (els.errorBanner) els.errorBanner.classList.add('hidden');
+    
+    const res = await fetch(`${API}/history`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(params),
+        signal: currentAbortController.signal
+    });
+    if (!res.ok) throw new Error('API Error');
+    return await res.json();
+}
+
+function showError(btnEl, message = "Something went wrong while running the experiment.") {
+    els.errorBanner.innerHTML = `<strong>ERROR:</strong> ${message} <button onclick="this.parentElement.classList.add('hidden');" style="width:auto; margin-top:10px; padding:6px 12px; border-color:var(--brick); color:var(--brick);">Dismiss</button>`;
+    els.errorBanner.classList.remove('hidden');
+    els.ariaLive.textContent = "Error: " + message;
+    if (btnEl) {
+        btnEl.disabled = false;
+        if (btnEl.dataset.originalText) btnEl.textContent = btnEl.dataset.originalText;
+    }
+}
+
+// Scroll into view helper
+function activateStep(n) {
+    els.steps.forEach((el, idx) => {
+        if (idx === n - 1) {
+            el.classList.add('active');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        } else {
+            el.classList.remove('active');
+        }
+    });
+}
+
+// Prediction Logic
+function selectPrediction(type, val, btn) {
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.pred-btn').forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+    
+    currentPrediction = { type, val: parseInt(val), btn: btn.textContent };
+    
+    if (type === 'delay') {
+        els.btnRunDelay.disabled = false;
+        els.instDelay.style.display = 'block';
+    } else if (type === 'dist') {
+        els.btnRunInterfere.disabled = false;
+        els.instDist.style.display = 'block';
+    }
+}
+
+// Show Prediction Feedback
+function showFeedback(type, accuracy, baselineAcc = 1.0) {
+    if (!currentPrediction || currentPrediction.type !== type) return;
+    
+    const basePct = Math.round(baselineAcc * 100);
+    const accPct = Math.round(accuracy * 100);
+    let isCorrect = false;
+    let verdict = "";
+    let why = "";
+    
+    if (type === 'dist') {
+        // Options: 1 (Improve), 2 (Get Worse), 3 (Stay Same)
+        isCorrect = currentPrediction.val === 2;
+        verdict = isCorrect ? "Correct." : "Incorrect.";
+        why = "Additional stored patterns introduce competing synaptic structure, reducing precision.";
+    } else if (type === 'delay') {
+        // Options: 1 (Unchanged), 2 (Weakens), 3 (Strengthens)
+        isCorrect = currentPrediction.val === 2;
+        verdict = isCorrect ? "Correct." : "Incorrect.";
+        why = "Synaptic memory isn't permanent. Background noise and time cause the connection strengths to decay.";
+    }
+    
+    const fb = type === 'delay' ? els.feedbackDelay : els.feedbackDist;
+    fb.innerHTML = `<strong>YOUR PREDICTION:</strong> ${currentPrediction.btn}<br><strong>ACTUAL RESULT:</strong> Baseline: ${basePct}% &rarr; After: ${accPct}%.<br><strong>VERDICT:</strong> ${verdict}<br><strong>WHY:</strong> ${why}`;
+    fb.classList.remove('hidden');
+}
+
+// Sliders
+els.slideCue.oninput = () => els.valCue.textContent = els.slideCue.value + '%';
+els.slideDist.oninput = () => els.valDist.textContent = els.slideDist.value;
+els.slideCueRec.oninput = () => els.valCueRec.textContent = els.slideCueRec.value + '%';
+els.slideDelay.oninput = () => els.valDelay.textContent = els.slideDelay.value;
+
+els.slideCueSand.oninput = () => els.valCueSand.textContent = els.slideCueSand.value + '%';
+els.slideDelaySand.oninput = () => els.valDelaySand.textContent = els.slideDelaySand.value;
+els.slideDistSand.oninput = () => els.valDistSand.textContent = els.slideDistSand.value;
+
+// Display Results Helper
+function showResults() {
+    els.wrapCue.classList.remove('hidden');
+    renderGrid(els.cvsCue, currentData.cue);
+    
+    els.lblRecall.textContent = "Recall Result (Diff)";
+    els.wrapRecall.classList.remove('hidden');
+    renderGrid(els.cvsRecall, currentData.recalled, currentData.pattern);
+    
+    els.diffLegend.classList.remove('hidden');
+    els.accVal.textContent = (currentData.accuracy * 100).toFixed(0) + '%';
+    els.accDisplay.classList.remove('hidden');
+    
+    const diffStats = getDiffStats(currentData.pattern, currentData.recalled);
+    els.ariaLive.textContent = `Trial complete. Accuracy is ${(currentData.accuracy * 100).toFixed(0)}%. ${diffStats.tp} correct, ${diffStats.fn} missed, ${diffStats.fp} false memories.`;
+}
+
+// Clear outputs for fresh run
+function hideResults() {
+    els.wrapCue.classList.add('hidden');
+    els.wrapRecall.classList.add('hidden');
+    els.diffLegend.classList.add('hidden');
+    els.accDisplay.classList.add('hidden');
+    els.feedbackDelay.classList.add('hidden');
+    els.feedbackDist.classList.add('hidden');
+    els.feedbackRec.classList.add('hidden');
+}
+
+// Step 1: Generate
+els.btnGenerate.onclick = async () => {
+    els.btnGenerate.disabled = true;
+    els.btnGenerate.dataset.originalText = els.btnGenerate.textContent;
+    els.btnGenerate.textContent = "Generating...";
+    sessionSeed = Math.floor(Math.random() * 1000000);
+    try {
+        currentData = await fetchTrial({ delay: 0, n_distractors: 0, reveal_fraction: 0.4, seed: sessionSeed });
+        renderGrid(els.cvsTruth, currentData.pattern);
+        els.ariaLive.textContent = "Pattern generated. " + currentData.k_active_units + " active units.";
+        
+        hideResults();
+        els.wrapMatrix.classList.add('hidden');
+        
+        els.btnGenerate.disabled = false;
+        els.btnGenerate.textContent = els.btnGenerate.dataset.originalText;
+        activateStep(2);
+    } catch(e) {
+        if (e.name !== 'AbortError') showError(els.btnGenerate);
+    }
+};
+
+// Step 2: Encode
+els.btnEncode.onclick = () => {
+    els.wrapMatrix.classList.remove('hidden');
+    // Empty matrix first for effect
+    const zeroMat = Array(200).fill().map(() => Array(200).fill(0));
+    renderMatrix(els.cvsMatrix, zeroMat);
+    els.matrixSubtext.textContent = "Preparing synapses...";
+    
+    setTimeout(() => {
+        animateMatrixSequence(els.cvsMatrix, currentData.history, () => {
+            activateStep(3);
+        });
+    }, 500);
+};
+
+// Step 3: Recall (Signal Flow)
+els.btnRecall.onclick = async () => {
+    els.btnRecall.disabled = true;
+    els.btnRecall.dataset.originalText = els.btnRecall.textContent;
+    els.btnRecall.textContent = "Recalling...";
+    const revFrac = parseInt(els.slideCue.value) / 100;
+    try {
+        currentData = await fetchTrial({ 
+            delay: 0, n_distractors: 0, reveal_fraction: revFrac, seed: sessionSeed 
+        });
+        
+        els.wrapCue.classList.remove('hidden');
+        renderGrid(els.cvsCue, currentData.cue);
+        
+        els.matrixSubtext.textContent = "Signal flowing from cue through synapses...";
+        
+        setTimeout(() => {
+            const raw = currentData.raw_activation;
+            let maxRaw = Math.max(...raw);
+            let minRaw = Math.min(...raw);
+            const range = maxRaw - minRaw || 1;
+            const normRaw = raw.map(v => (v - minRaw) / range);
+            
+            els.lblRecall.textContent = "Activation Scores (Signal)";
+            els.wrapRecall.classList.remove('hidden');
+            renderGrid(els.cvsRecall, normRaw); 
+            els.matrixSubtext.textContent = "Stage 1: Multiply cue by synaptic weights to produce support scores...";
+            els.ariaLive.textContent = "Activation scores generated.";
+            
+            setTimeout(() => {
+                drawKnownBoost(els.cvsRecall, currentData.known_mask);
+                els.matrixSubtext.textContent = "Stage 2: Units already present in the cue are retained (boosted) by the recall rule, then the strongest remaining units are selected...";
+                els.lblRecall.textContent = "Boosting Known Units...";
+                els.ariaLive.textContent = "Known units boosted.";
+
+                setTimeout(() => {
+                    showResults();
+                    activateStep(4);
+                    els.btnRecall.disabled = false;
+                    els.btnRecall.textContent = els.btnRecall.dataset.originalText;
+                }, 2000);
+            }, 1500);
+            
+        }, 1000);
+
+    } catch(e) {
+        if (e.name !== 'AbortError') showError(els.btnRecall);
+    }
+};
+
+// Step 4 to Step 5: Proceed to Challenge 1
+els.btnProceedChallenge1.onclick = () => {
+    activateStep(5);
+};
+
+// Step 5: Challenge 1 (Predict Interference)
+els.btnRunInterfere.onclick = async () => {
+    els.btnRunInterfere.disabled = true;
+    els.btnRunInterfere.dataset.originalText = els.btnRunInterfere.textContent;
+    els.btnRunInterfere.textContent = "Running...";
+    const dist = parseInt(els.slideDist.value);
+    const revFrac = parseInt(els.slideCue.value) / 100;
+    const baselineAcc = (currentData && typeof currentData.accuracy === 'number') ? currentData.accuracy : 1.0;
+    try {
+        currentData = await fetchTrial({ 
+            delay: 0, n_distractors: dist, reveal_fraction: revFrac, seed: sessionSeed 
+        });
+        
+        hideResults();
+        animateMatrixSequence(els.cvsMatrix, currentData.history, () => {
+            showResults();
+            showFeedback('dist', currentData.accuracy, baselineAcc);
+            els.btnProceedChallenge2.classList.remove('hidden');
+            els.btnRunInterfere.disabled = false;
+            els.btnRunInterfere.textContent = els.btnRunInterfere.dataset.originalText;
+        }, true); // Fast mode
+    } catch(e) {
+        if (e.name !== 'AbortError') showError(els.btnRunInterfere);
+    }
+};
+
+// Challenge 2: Evaluation logic shared between Mouse/Touch and Keyboard
+function evaluateRecallCell(idx, sourceBtn = null) {
+    if (!currentData || !currentData.recalled || !els.steps[5].classList.contains('active')) return;
+    if (idx < 0 || idx >= 200) return;
+    
+    // Update selection state for candidate buttons
+    const listContainer = document.getElementById('recalledUnitsList');
+    if (listContainer) {
+        const btns = listContainer.querySelectorAll('.unit-cell-btn');
+        btns.forEach(b => {
+            if (parseInt(b.dataset.unitIdx) === idx || b === sourceBtn) {
+                b.classList.add('selected');
+                b.setAttribute('aria-pressed', 'true');
+            } else {
+                b.classList.remove('selected');
+                b.setAttribute('aria-pressed', 'false');
+            }
+        });
+    }
+
+    const isTruth = currentData.pattern[idx] > 0.5;
+    const isRecall = currentData.recalled[idx] > 0.5;
+    
+    let success = false;
+    let feedbackStr = "";
+    if (!isTruth && isRecall) {
+        feedbackStr = `Correct! Unit ${idx} is a FALSE MEMORY (hallucination). The network recalled it due to interference crosstalk, but it wasn't in the original pattern.`;
+        els.feedbackSpot.innerHTML = `<strong>Correct!</strong> Unit ${idx} is a FALSE MEMORY (hallucination). The network recalled it due to interference crosstalk, but it wasn't in the original pattern.`;
+        success = true;
+    } else if (isTruth && isRecall) {
+        feedbackStr = `Not quite. Unit ${idx} is a True Positive (solid amber). It belongs to the correct pattern.`;
+        els.feedbackSpot.innerHTML = `<strong>Not quite.</strong> Unit ${idx} is a True Positive (solid amber). It belongs to the correct pattern.`;
+    } else if (isTruth && !isRecall) {
+        feedbackStr = `Not quite. Unit ${idx} is a Missed unit (dashed amber). It was forgotten.`;
+        els.feedbackSpot.innerHTML = `<strong>Not quite.</strong> Unit ${idx} is a Missed unit (dashed amber). It was forgotten.`;
+    } else {
+        feedbackStr = `Not quite. Unit ${idx} is a True Negative (empty space).`;
+        els.feedbackSpot.innerHTML = `<strong>Not quite.</strong> Unit ${idx} is a True Negative (empty space).`;
+    }
+    
+    els.feedbackSpot.classList.remove('hidden');
+    if (els.ariaLive) {
+        els.ariaLive.textContent = feedbackStr + (success ? " Challenge 2 completed! You can now proceed to Challenge 3." : "");
+    }
+    if (success) {
+        els.btnProceedChallenge3.classList.remove('hidden');
+    }
+}
+
+// Step 5 to Step 6: Proceed to Challenge 2 (Spot False Memory)
+els.btnProceedChallenge2.onclick = () => {
+    activateStep(6);
+    els.feedbackSpot.classList.add('hidden');
+    
+    // Populate keyboard-accessible candidate units list
+    const listContainer = document.getElementById('recalledUnitsList');
+    if (listContainer && currentData && currentData.recalled) {
+        listContainer.innerHTML = '';
+        for (let i = 0; i < currentData.recalled.length; i++) {
+            if (currentData.recalled[i] > 0.5) {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'unit-cell-btn';
+                btn.dataset.unitIdx = i;
+                btn.textContent = `Unit ${i}`;
+                btn.setAttribute('aria-pressed', 'false');
+                btn.setAttribute('aria-label', `Diagnose Unit ${i} at row ${Math.floor(i / 20) + 1}, column ${(i % 20) + 1}`);
+                btn.onclick = () => evaluateRecallCell(i, btn);
+                listContainer.appendChild(btn);
+            }
+        }
+    }
+
+    // Graceful handling if 0 FPs
+    let fpCount = 0;
+    for (let i = 0; i < currentData.pattern.length; i++) {
+        if (currentData.pattern[i] <= 0.5 && currentData.recalled[i] > 0.5) fpCount++;
+    }
+    if (fpCount === 0) {
+        els.feedbackSpot.innerHTML = "<strong>Notice:</strong> This run produced no false positives! The network got lucky or interference wasn't strong enough. You can proceed, or go back to add more distractors.";
+        els.feedbackSpot.classList.remove('hidden');
+        if (els.ariaLive) els.ariaLive.textContent = "Notice: This run produced no false positives! You can proceed to Challenge 3.";
+        els.btnProceedChallenge3.classList.remove('hidden');
+    }
+};
+
+// Challenge 2: Clicking on cvsRecall
+els.cvsRecall.onclick = (e) => {
+    if (!currentData || !currentData.recalled || !els.steps[5].classList.contains('active')) return;
+    
+    const rect = els.cvsRecall.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Canvas internal width 200, height 100
+    // Display size is 200x100
+    const col = Math.floor(x / 10);
+    const row = Math.floor(y / 10);
+    const idx = row * 20 + col;
+    
+    evaluateRecallCell(idx);
+};
+
+// Challenge 2: Keyboard support on cvsRecall (Tab + Enter/Space)
+els.cvsRecall.tabIndex = 0;
+els.cvsRecall.setAttribute('role', 'region');
+els.cvsRecall.setAttribute('aria-label', 'Recall Result Grid. Navigate candidate units or press Enter to diagnose.');
+els.cvsRecall.onkeydown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (!currentData || !currentData.recalled || !els.steps[5].classList.contains('active')) return;
+        let targetIdx = -1;
+        for (let i = 0; i < currentData.recalled.length; i++) {
+            if (currentData.recalled[i] > 0.5) {
+                targetIdx = i;
+                if (currentData.pattern[i] <= 0.5) break; // select first false memory if present
+            }
+        }
+        if (targetIdx >= 0) evaluateRecallCell(targetIdx);
+    }
+};
+
+// Step 6 to Step 7: Proceed to Challenge 3 (Recover Memory)
+els.btnProceedChallenge3.onclick = () => {
+    activateStep(7);
+};
+
+// Step 7: Challenge 3
+els.btnRunRecover.onclick = async () => {
+    els.btnRunRecover.disabled = true;
+    els.btnRunRecover.dataset.originalText = els.btnRunRecover.textContent;
+    els.btnRunRecover.textContent = "Running...";
+    const dist = parseInt(els.slideDist.value); // keep dist from earlier
+    const revFrac = parseInt(els.slideCueRec.value) / 100;
+    try {
+        currentData = await fetchTrial({ 
+            delay: 0, n_distractors: dist, reveal_fraction: revFrac, seed: sessionSeed 
+        });
+        
+        hideResults();
+        animateMatrixSequence(els.cvsMatrix, currentData.history, () => {
+            showResults();
+            const acc = currentData.accuracy;
+            if (acc >= 0.8) {
+                els.feedbackRec.innerHTML = `<strong>Success!</strong> Accuracy reached ${(acc*100).toFixed(0)}%. A stronger cue can overcome degraded synaptic weights by forcing correct pathways to activate.`;
+                els.btnProceedChallenge4.classList.remove('hidden');
+            } else {
+                els.feedbackRec.innerHTML = `<strong>Not yet.</strong> Accuracy is ${(acc*100).toFixed(0)}%. Try giving the network a more complete cue to overcome the interference.`;
+            }
+            els.feedbackRec.classList.remove('hidden');
+            els.btnRunRecover.disabled = false;
+            els.btnRunRecover.textContent = els.btnRunRecover.dataset.originalText;
+        }, true);
+    } catch(e) {
+        if (e.name !== 'AbortError') showError(els.btnRunRecover);
+    }
+};
+
+// Step 7 to Step 8: Proceed to Challenge 4 (Predict Delay)
+els.btnProceedChallenge4.onclick = () => {
+    activateStep(8);
+};
+
+// Step 8: Challenge 4
+els.btnRunDelay.onclick = async () => {
+    els.btnRunDelay.disabled = true;
+    els.btnRunDelay.dataset.originalText = els.btnRunDelay.textContent;
+    els.btnRunDelay.textContent = "Running...";
+    const delay = parseInt(els.slideDelay.value);
+    const revFrac = parseInt(els.slideCueRec.value) / 100; // use previous cue
+    const baselineAcc = (currentData && typeof currentData.accuracy === 'number') ? currentData.accuracy : 1.0;
+    try {
+        currentData = await fetchTrial({ 
+            delay: delay, n_distractors: 0, reveal_fraction: revFrac, seed: sessionSeed 
+        });
+        
+        hideResults();
+        animateMatrixSequence(els.cvsMatrix, currentData.history, () => {
+            showResults();
+            showFeedback('delay', currentData.accuracy, baselineAcc);
+            els.btnProceedBridge.classList.remove('hidden');
+            els.btnRunDelay.disabled = false;
+            els.btnRunDelay.textContent = els.btnRunDelay.dataset.originalText;
+        }, false);
+    } catch(e) {
+        if (e.name !== 'AbortError') showError(els.btnRunDelay);
+    }
+};
+
+// Step 8 to Step 9: Proceed to Bridge
+els.btnProceedBridge.onclick = () => {
+    activateStep(9);
+};
+
+// Step 9 to Step 10: Proceed to Sandbox
+els.btnProceedSandbox.onclick = () => {
+    activateStep(10);
+};
+
+// Step 10: Sandbox
+els.btnSandboxRun.onclick = async () => {
+    els.btnSandboxRun.disabled = true;
+    els.btnSandboxRun.dataset.originalText = els.btnSandboxRun.textContent;
+    els.btnSandboxRun.textContent = "Running...";
+    const delay = parseInt(els.slideDelaySand.value);
+    const dist = parseInt(els.slideDistSand.value);
+    const revFrac = parseInt(els.slideCueSand.value) / 100;
+    try {
+        currentData = await fetchTrial({ 
+            delay: delay, n_distractors: dist, reveal_fraction: revFrac, seed: sessionSeed 
+        });
+        
+        hideResults();
+        animateMatrixSequence(els.cvsMatrix, currentData.history, () => {
+            showResults();
+            els.btnSandboxRun.disabled = false;
+            els.btnSandboxRun.textContent = els.btnSandboxRun.dataset.originalText;
+        }, true);
+    } catch(e) {
+        if (e.name !== 'AbortError') showError(els.btnSandboxRun);
+    }
+};
+
+// Step 10 to Step 11: Proceed to BDH Module
+els.btnProceedBDH.onclick = () => { activateStep(11); };
+
+// Step 11 to Step 12
+els.btnProceedStep12.onclick = () => { activateStep(12); };
+
+// Stage 12: Where Does BDH Store Memory
+function checkBDHMemory(choice, btn) {
+    if (btn.disabled) return;
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.pred-btn').forEach(b => { 
+        b.classList.remove('selected'); 
+        b.setAttribute('aria-pressed', 'false'); 
+        b.disabled = true;
+    });
+    btn.classList.add('selected');
+    btn.setAttribute('aria-pressed', 'true');
+    
+    if (choice === 2) {
+        els.feedbackBDHMemory.innerHTML = `<strong>RESULT:</strong> Correct.<br><strong>WHY:</strong> BDH has no external memory module. As it reads input, the synaptic connections between its neuron particles change — building up a dynamic representation of what it has seen. This is conceptually analogous to what you just saw in the toy. <abbr title="arXiv:2509.26507">[BDH Paper]</abbr>`;
+    } else {
+        els.feedbackBDHMemory.innerHTML = `<strong>RESULT:</strong> Incorrect.<br><strong>WHY:</strong> BDH has no external memory module. As it reads input, the synaptic connections between its neuron particles change — building up a dynamic representation of what it has seen. This is conceptually analogous to what you just saw in the toy. <abbr title="arXiv:2509.26507">[BDH Paper]</abbr>`;
+    }
+    els.btnProceedStep13.classList.remove('hidden');
+    els.feedbackBDHMemory.classList.remove('hidden');
+}
+
+// Step 12 to Step 13
+els.btnProceedStep13.onclick = () => { activateStep(13); };
+
+// Stage 13: What Corresponds to W
+function checkBDHW(choice, btn) {
+    if (btn.disabled) return;
+    const parent = btn.parentElement;
+    parent.querySelectorAll('.pred-btn').forEach(b => { 
+        b.classList.remove('selected'); 
+        b.setAttribute('aria-pressed', 'false'); 
+        b.disabled = true;
+    });
+    btn.classList.add('selected');
+    btn.setAttribute('aria-pressed', 'true');
+    
+    if (choice === 2) {
+        els.feedbackBDHW.innerHTML = `<strong>RESULT:</strong> Correct.<br><strong>WHY:</strong> In BDH, the synaptic state — the strengths of connections between neuron particles — evolves during inference. This is analogous to W in our toy. However, in BDH this happens at far greater scale, across a sparse graph rather than a dense matrix, and continuously across every token processed. <abbr title="arXiv:2509.26507">[BDH Paper]</abbr>`;
+    } else {
+        els.feedbackBDHW.innerHTML = `<strong>RESULT:</strong> Incorrect.<br><strong>WHY:</strong> In BDH, the synaptic state — the strengths of connections between neuron particles — evolves during inference. This is analogous to W in our toy. However, in BDH this happens at far greater scale, across a sparse graph rather than a dense matrix, and continuously across every token processed. <abbr title="arXiv:2509.26507">[BDH Paper]</abbr>`;
+    }
+    els.btnProceedStep14.classList.remove('hidden');
+    els.feedbackBDHW.classList.remove('hidden');
+}
+
+// Step 13 to Step 14
+els.btnProceedStep14.onclick = () => { activateStep(14); };
+
+// Step 14 to Step 15
+els.btnProceedStep15.onclick = () => { activateStep(15); };
+
+// Stage 15: Classification Game
+function checkClassification(cardId, type, btn) {
+    if (btn.disabled) return;
+    const card = document.getElementById('card' + cardId);
+    card.querySelectorAll('.pred-btn').forEach(b => { 
+        b.classList.remove('selected'); 
+        b.setAttribute('aria-pressed', 'false'); 
+        b.disabled = true;
+    });
+    btn.classList.add('selected');
+    btn.setAttribute('aria-pressed', 'true');
+    
+    let fb = "";
+    if (cardId === 1) {
+        if (type === 'analogy') fb = "<strong>Correct: Direct conceptual analogy.</strong> BDH's neurons produce sparse, positive-only activation vectors, conceptually similar to the sparse binary patterns (k active units) we used in our toy model.";
+        else fb = "<strong>Actually: Direct conceptual analogy.</strong> BDH's neurons produce sparse, positive-only activation vectors, conceptually similar to the sparse binary patterns (k active units) we used in our toy model.";
+        setTimeout(() => { document.getElementById('card2').classList.remove('hidden'); }, 1000);
+    } else if (cardId === 2) {
+        if (type === 'not') fb = "<strong>Correct: Not represented in toy.</strong> BDH's neuron graph is scale-free (a few highly-connected hub neurons, many sparsely-connected peripheral ones). Our toy uses a dense 200x200 matrix.";
+        else fb = "<strong>Actually: Not represented in toy.</strong> BDH's neuron graph is scale-free (a few highly-connected hub neurons, many sparsely-connected peripheral ones). Our toy uses a dense 200x200 matrix.";
+        setTimeout(() => { document.getElementById('card3').classList.remove('hidden'); }, 1000);
+    } else if (cardId === 3) {
+        if (type === 'analogy') fb = "<strong>Correct: Direct conceptual analogy.</strong> In BDH, synaptic weights connecting neuron particles update as the model processes input, analogous to the Hebbian covariance rule in our toy.";
+        else fb = "<strong>Actually: Direct conceptual analogy.</strong> In BDH, synaptic weights connecting neuron particles update as the model processes input, analogous to the Hebbian covariance rule in our toy.";
+        setTimeout(() => { document.getElementById('card4').classList.remove('hidden'); }, 1000);
+    } else if (cardId === 4) {
+        if (type === 'not') fb = "<strong>Correct: Not represented in toy.</strong> Our toy encodes one static pattern array. BDH processes sequential token inputs continuously over time.";
+        else fb = "<strong>Actually: Not represented in toy.</strong> Our toy encodes one static pattern array. BDH processes sequential token inputs continuously over time.";
+        setTimeout(() => { els.btnProceedStep16.classList.remove('hidden'); }, 1000);
+    }
+    
+    els.feedbackClassification.innerHTML += `<p style="margin-bottom: 10px;">${fb}</p>`;
+    els.feedbackClassification.classList.remove('hidden');
+}
+
+// Step 15 to Step 16
+els.btnProceedStep16.onclick = () => { activateStep(16); };
+
+// Step 16 to Step 17
+els.btnProceedStep17.onclick = () => { activateStep(17); };
+
+// Stage 17: Return to Sandbox
+if (els.btnReturnToSandbox) {
+    els.btnReturnToSandbox.onclick = () => {
+        activateStep(10);
+        setTimeout(() => {
+            els.steps[9].scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
+    };
+}
+
+</script>
+</body>
+</html>
